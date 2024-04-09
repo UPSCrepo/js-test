@@ -35,16 +35,43 @@ request(requestOptions, (error, response, html) => {
     // Parsing the HTML with cheerio
     const $ = cheerio.load(html);
     
-    // Extracting text of the second anchor element with class "topic_details"
-    const topics = [];
-    $('.topic_details a:nth-child(2)').each((index, element) => {
-      topics.push($(element).text());
-    });
+    // Extracting data for each "topic"
+    $('.topic').each((index, element) => {
+      const topic = $(element);
 
-    // Printing the extracted topics
-    console.log('Extracted Topics:');
-    topics.forEach(topic => {
-      console.log(topic);
+      // Extracting Category Link and Category Text
+      const categoryLink = topic.find('.topic_details a:nth-child(1)').attr('href');
+      const categoryText = topic.find('.topic_details a:nth-child(1)').text();
+
+      // Extracting Post Link and Post Title
+      const postLink = topic.find('.topic_details a:nth-child(2)').attr('href');
+      const postTitle = topic.find('.topic_details a:nth-child(2)').text();
+
+      // Extracting Poster
+      const poster = topic.find('.bbc_img:nth-child(2)').attr('src');
+
+      // Extracting GDToT Links
+      const gdTotLinks = [];
+      topic.find('.bbc_link').each((index, element) => {
+        gdTotLinks.push({
+          link: $(element).attr('href'),
+          text: $(element).text()
+        });
+      });
+
+      // Printing variables for the current topic
+      console.log('Topic:', index + 1);
+      console.log('Category Link:', categoryLink);
+      console.log('Category Text:', categoryText);
+      console.log('Post Link:', postLink);
+      console.log('Post Title:', postTitle);
+      console.log('Poster:', poster);
+      console.log('GDToT Links:');
+      gdTotLinks.forEach(link => {
+        console.log('Link:', link.link);
+        console.log('Text:', link.text);
+      });
+      console.log('--------------------------------------------------');
     });
   } else {
     console.error('Failed to fetch data from the URL');
