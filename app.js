@@ -46,7 +46,7 @@ function sendParts(parts, delay = 0) {
   parts.forEach((part, index) => {
     setTimeout(() => {
       bot.sendMessage(chatId, part.trim(), { parse_mode: 'HTML' });
-    }, delay + index * 1000); // Delay of 1 second between sending each part
+    }, delay + index * 10000); // Delay of 1 second between sending each part
   });
 }
 
