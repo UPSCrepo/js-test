@@ -1,6 +1,7 @@
 const request = require("request");
 const cheerio = require('cheerio');
 const express = require('express');
+const TelegramBot = require('node-telegram-bot-api');
 
 //Chcek Health of Koyeb Port. Don't Remove this
 const app = express()
@@ -15,11 +16,42 @@ app.get('/', (req, res) => {
 })
 //End Koyeb Helth Chech 2nd Code
 
+// Initialize Telegram bot
+const botToken = '6628553285:AAFc8rpbAmivkVH_sYNspvHWKckGeu28xro'; // Replace 'YOUR_TELEGRAM_BOT_TOKEN' with your bot token
+const chatId = '-1001995193470'; // Replace 'YOUR_TELEGRAM_CHANNEL_ID' with your channel ID
+const bot = new TelegramBot(botToken);
+
 // Array to store processed postLinks
 let processedPostLinks = [];
 
-// Function to scrape and print data from the URL
-function scrapeAndPrintData() {
+// Function to split message into parts if it exceeds 4096 characters
+function splitMessage(message) {
+  const maxCharacters = 4096;
+  const messageParts = [];
+
+  while (message.length > maxCharacters) {
+    const part = message.substring(0, maxCharacters);
+    messageParts.push(part);
+    message = message.substring(maxCharacters);
+  }
+
+  // Push the remaining part or the whole message if it's shorter than 4096 characters
+  messageParts.push(message);
+
+  return messageParts;
+}
+
+// Function to send message parts with delay between each part
+function sendParts(parts, delay = 0) {
+  parts.forEach((part, index) => {
+    setTimeout(() => {
+      bot.sendMessage(chatId, part.trim(), { parse_mode: 'HTML' });
+    }, delay + index * 1000); // Delay of 1 second between sending each part
+  });
+}
+
+// Function to scrape and send data to Telegram
+function scrapeAndSendData() {
   const url = 'https://ww1.sharespark.cfd/index.php?action=profile;area=showposts;u=2'; // Replace 'YOUR_URL_HERE' with the URL you want to scrape
   const cookies = {
     'PHPSESSID': 'c4u9qhshvlch1vebihrre9grq2',
@@ -53,28 +85,25 @@ function scrapeAndPrintData() {
           const categoryLink = topic.find('.topic_details a:nth-child(1)').attr('href');
           const categoryText = topic.find('.topic_details a:nth-child(1)').text();
           const postTitle = topic.find('.topic_details a:nth-child(2)').text();
-          const poster = topic.find('.bbc_img:nth-child(2)').attr('src');
+          const poster = topic.find('.bbc_img').eq(1).attr('src');
           const gdTotLinks = [];
           topic.find('.bbc_link').each((index, element) => {
             gdTotLinks.push({
-              link: $(element).attr('href'),
-              text: $(element).text()
+              text: $(element).text(),
+              link: $(element).attr('href')
             });
           });
 
-          // Printing variables for the current topic
-          console.log('Topic:', index + 1);
-          console.log('Category Link:', categoryLink);
-          console.log('Category Text:', categoryText);
-          console.log('Post Link:', postLink);
-          console.log('Post Title:', postTitle);
-          console.log('Poster:', poster);
-          console.log('GDToT Links:');
-          gdTotLinks.forEach(link => {
-            console.log('Link:', link.link);
-            console.log('Text:', link.text);
-          });
-          console.log('--------------------------------------------------');
+          // Construct the message
+          let message = `
+          ${postTitle}\n\n<a href="${poster}">Poster</a> | ${categoryText}\n\n<b>GDToT Links:</b>\n\n${gdTotLinks.map(link =>`${link.text.trim()}\n${link.link}`).join('\n\n')}
+          `;
+
+          // Split message into parts if it exceeds 4096 characters
+          const messageParts = splitMessage(message);
+
+          // Send message parts with delay between each part
+          sendParts(messageParts, index * 10000);
 
           // Mark postLink as processed
           processedPostLinks.push(postLink);
@@ -86,17 +115,20 @@ function scrapeAndPrintData() {
       if (!newTopicsFound) {
         console.log('No New Topics');
       }
+
+      // Schedule the next scrape after sending messages to Telegram
+      setTimeout(scrapeAndSendData, $('.topic').length * 10000);
     } else {
       console.error('Failed to fetch data from the URL');
+      
+      // Schedule the next scrape on error
+      setTimeout(scrapeAndSendData, 10000);
     }
-
-    // Schedule the next scrape after 10 seconds
-    setTimeout(scrapeAndPrintData, 10000);
   });
 }
 
-// Start scraping and printing data
-scrapeAndPrintData();
+// Start scraping and sending data to Telegram
+scrapeAndSendData();
 
 //Koyeb Helth Check. Don't Remove This
 app.listen(port, () => {
